@@ -1,6 +1,6 @@
 # SPEC 02 — Efectos visuales en la destrucción de bloques
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01
 > **Date:** 2026-11-14
 > **Objective:** Mejorar la animación de destrucción de bloques, que usa los frames de `EXPLOSION_FRAMES` del spritesheet, añadiendo fade-out, puntaje flotante (+10) y screen shake leve, sin cambiar la colisión, el puntaje ni los 150 ms de la explosión.
@@ -64,19 +64,19 @@ Convenciones:
 
 ## Criterios de aceptación
 
-- [ ] El juego carga sin errores en la consola y se juega igual que con la SPEC 01.
-- [ ] La explosión de cada bloque muestra los 4 frames de `EXPLOSION_FRAMES` de su color, en orden, y no se dibuja ninguna partícula procedural.
-- [ ] Al romper un bloque, sus últimos 75 ms de explosión se dibujan con alfa decreciente hasta 0.
-- [ ] Aparece un texto `+10` en la posición del bloque, sube y desaparece a los 600 ms.
-- [ ] El canvas se sacude visiblemente unos 120 ms al romper un bloque y vuelve a su posición exacta después.
-- [ ] El HUD (puntaje y vidas) y las pantallas de `won` y `gameover` no se sacuden.
-- [ ] El puntaje sigue subiendo exactamente 10 por bloque y la explosión sigue durando 150 ms.
-- [ ] Un bloque en explosión sigue sin cambiar la trayectoria de la bola.
-- [ ] Al romper el último bloque, los efectos terminan de animarse bajo el mensaje "¡Ganaste!" sin errores.
-- [ ] Al reiniciar desde "Game Over" o "¡Ganaste!" no quedan textos ni sacudida de la partida anterior.
-- [ ] Romper bloques en rápida sucesión no deja la sacudida activa más de 120 ms tras el último bloque roto.
-- [ ] Llamar dos veces seguidas a `breakBlock(blk)` con el mismo bloque (simulando dos bolas, p. ej. desde la consola del navegador) suma 10 puntos una sola vez y genera un solo `+10`.
-- [ ] `breakBlock(blk)` no recibe ni lee la bola; los efectos no dependen de `state.ball`.
+- [x] El juego carga sin errores en la consola y se juega igual que con la SPEC 01.
+- [x] La explosión de cada bloque muestra los 4 frames de `EXPLOSION_FRAMES` de su color, en orden, y no se dibuja ninguna partícula procedural.
+- [x] Al romper un bloque, sus últimos 75 ms de explosión se dibujan con alfa decreciente hasta 0.
+- [x] Aparece un texto `+10` en la posición del bloque, sube y desaparece a los 600 ms.
+- [x] El canvas se sacude visiblemente unos 120 ms al romper un bloque y vuelve a su posición exacta después.
+- [x] El HUD (puntaje y vidas) y las pantallas de `won` y `gameover` no se sacuden.
+- [x] El puntaje sigue subiendo exactamente 10 por bloque y la explosión sigue durando 150 ms.
+- [x] Un bloque en explosión sigue sin cambiar la trayectoria de la bola.
+- [x] Al romper el último bloque, los efectos terminan de animarse bajo el mensaje "¡Ganaste!" sin errores.
+- [x] Al reiniciar desde "Game Over" o "¡Ganaste!" no quedan textos ni sacudida de la partida anterior.
+- [x] Romper bloques en rápida sucesión no deja la sacudida activa más de 120 ms tras el último bloque roto.
+- [x] Llamar dos veces seguidas a `breakBlock(blk)` con el mismo bloque (simulando dos bolas, p. ej. desde la consola del navegador) suma 10 puntos una sola vez y genera un solo `+10`.
+- [x] `breakBlock(blk)` no recibe ni lee la bola; los efectos no dependen de `state.ball`.
 
 ## Decisiones
 
