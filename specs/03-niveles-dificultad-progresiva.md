@@ -1,6 +1,6 @@
 # SPEC 03 — Niveles infinitos con dificultad progresiva
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-11-14
 > **Objective:** Añadir niveles sucesivos sin final (5 layouts fijos y luego generación procedural) cuya dificultad sube con el número de nivel mediante bola más rápida, bloques grises de varios golpes y más filas/densidad.
@@ -83,21 +83,21 @@ Convenciones:
 
 ## Criterios de aceptación
 
-- [ ] El juego carga sin errores en la consola y el nivel 1 se ve y se juega igual que en la SPEC 01 (60 bloques de 1 golpe, bola a 320 px/s).
-- [ ] El HUD muestra el nivel actual durante la partida.
-- [ ] Al romper el último bloque aparece una pantalla "Nivel 2" y no aparece "¡Ganaste!" en ningún caso.
-- [ ] Desde la pantalla de nivel, Espacio, click o tap cargan el nivel siguiente con la bola pegada a la pala, y el puntaje y las vidas no cambian.
-- [ ] Los niveles 1 a 5 muestran cinco layouts distintos entre sí.
-- [ ] A partir del nivel 6 los layouts se generan por código y el mismo nivel produce siempre el mismo layout.
-- [ ] La velocidad de la bola en el nivel N es `320 × min(1 + 0.05×(N-1), 1.6)` px/s y no cambia durante el nivel.
-- [ ] La velocidad de la bola no supera 512 px/s en ningún nivel.
-- [ ] Un bloque gris con 2 golpes necesita 2 golpes para romperse, se atenúa tras el primero, suma 10 puntos una sola vez y la bola rebota en ambos golpes.
-- [ ] Desde el nivel 10 los bloques grises necesitan 3 golpes.
-- [ ] Ningún nivel generado tiene más de 10 filas ni 0 bloques, y todos son superables (no existen bloques indestructibles).
-- [ ] Con niveles altos (≥ 20) la dificultad se estabiliza en los topes definidos y el juego sigue funcionando sin errores.
-- [ ] Al perder la tercera vida aparece "Game Over"; reiniciar devuelve a nivel 1, puntaje 0, vidas 3 y velocidad base.
-- [ ] Los efectos de la SPEC 02 (fade, `+10`, shake) siguen funcionando y terminan de animarse bajo la pantalla de nivel sin errores.
-- [ ] Un bloque en explosión sigue sin cambiar la trayectoria de la bola.
+- [x] El juego carga sin errores en la consola y el nivel 1 se ve y se juega igual que en la SPEC 01 (60 bloques de 1 golpe, bola a 320 px/s).
+- [x] El HUD muestra el nivel actual durante la partida.
+- [x] Al romper el último bloque aparece una pantalla "Nivel 2" y no aparece "¡Ganaste!" en ningún caso.
+- [x] Desde la pantalla de nivel, Espacio, click o tap cargan el nivel siguiente con la bola pegada a la pala, y el puntaje y las vidas no cambian.
+- [x] Los niveles 1 a 5 muestran cinco layouts distintos entre sí.
+- [x] A partir del nivel 6 los layouts se generan por código y el mismo nivel produce siempre el mismo layout.
+- [x] La velocidad de la bola en el nivel N es `320 × min(1 + 0.05×(N-1), 1.6)` px/s y no cambia durante el nivel.
+- [x] La velocidad de la bola no supera 512 px/s en ningún nivel.
+- [x] Un bloque gris con 2 golpes necesita 2 golpes para romperse, se atenúa tras el primero, suma 10 puntos una sola vez y la bola rebota en ambos golpes.
+- [x] Desde el nivel 10 los bloques grises necesitan 3 golpes.
+- [x] Ningún nivel generado tiene más de 10 filas ni 0 bloques, y todos son superables (no existen bloques indestructibles).
+- [x] Con niveles altos (≥ 20) la dificultad se estabiliza en los topes definidos y el juego sigue funcionando sin errores.
+- [x] Al perder la tercera vida aparece "Game Over"; reiniciar devuelve a nivel 1, puntaje 0, vidas 3 y velocidad base.
+- [x] Los efectos de la SPEC 02 (fade, `+10`, shake) siguen funcionando y terminan de animarse bajo la pantalla de nivel sin errores.
+- [x] Un bloque en explosión sigue sin cambiar la trayectoria de la bola.
 
 ## Decisiones
 
