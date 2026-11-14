@@ -11,6 +11,7 @@ const FADE_MS = 75;                                    // ms finales de la explo
 const FLOAT_TEXT = { life: 600, riseSpeed: 40 };       // ms, px/s
 const SHAKE = { duration: 120, magnitude: 3 };         // ms, px
 const SOUND_VOLUME = 0.5;                              // volumen inicial (0 a 1)
+const VOLUME_STEP = 0.1;
 const SOUND_FILES = {
   bounce: 'assets/sounds/ball-bounce.mp3',
   break: 'assets/sounds/break-sound.mp3',
@@ -173,9 +174,16 @@ ctx.imageSmoothingEnabled = false;
 // Estado de audio fuera de `state`: no se reinicia con resetGame()
 const sounds = {};
 let muted = false;
+let volume = SOUND_VOLUME;   // 0 a 1
 for (const name in SOUND_FILES) {
   sounds[name] = new Audio(SOUND_FILES[name]);
   sounds[name].volume = SOUND_VOLUME;
+}
+
+// Suma delta al volumen, lo limita a [0, 1], lo redondea a un decimal y lo aplica a todos los sonidos
+function changeVolume(delta) {
+  volume = Math.round(Math.max(0, Math.min(1, volume + delta)) * 10) / 10;
+  for (const name in sounds) sounds[name].volume = volume;
 }
 
 // Un único Audio por sonido: si aún suena, se reinicia en lugar de clonarse
@@ -263,6 +271,15 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) onAction();
+  } else if (e.code === 'KeyM') {
+    // Alterna el silencio en cualquier estado; se ignora la repetición al mantener
+    if (!e.repeat) muted = !muted;
+  } else if (e.code === 'ArrowUp' || e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+    e.preventDefault();   // evita desplazar la página; mantener pulsada repite el cambio
+    changeVolume(VOLUME_STEP);
+  } else if (e.code === 'ArrowDown' || e.key === '-' || e.code === 'NumpadSubtract') {
+    e.preventDefault();
+    changeVolume(-VOLUME_STEP);
   }
 });
 canvas.addEventListener('pointerdown', onAction);
@@ -283,6 +300,7 @@ function bouncePaddle() {
   b.vx = speed * Math.sin(angle);
   b.vy = -speed * Math.cos(angle);
   b.y = PADDLE.y - BALL.size;                          // evita quedar dentro de la pala
+  playSound('bounce');
 }
 
 // Colisión bola-bloque: como máximo un bloque por frame; se invierte el eje
@@ -324,6 +342,7 @@ function breakBlock(blk) {
     t: 0,
   });
   state.shakeT = 0;   // reinicia la sacudida, no se acumula
+  playSound('break');
 }
 
 // Avanza los efectos (ms) y elimina los textos vencidos
@@ -360,9 +379,9 @@ function updateBall(dt) {
   b.y += b.vy * dt;
 
   // Paredes laterales y techo
-  if (b.x < 0) { b.x = 0; b.vx = Math.abs(b.vx); }
-  else if (b.x + BALL.size > W) { b.x = W - BALL.size; b.vx = -Math.abs(b.vx); }
-  if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy); }
+  if (b.x < 0) { b.x = 0; b.vx = Math.abs(b.vx); playSound('bounce'); }
+  else if (b.x + BALL.size > W) { b.x = W - BALL.size; b.vx = -Math.abs(b.vx); playSound('bounce'); }
+  if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy); playSound('bounce'); }
 
   bouncePaddle();
   collideBlocks();
@@ -471,6 +490,9 @@ function drawHud() {
     const x = W - 16 - icon - i * (icon + gap);
     drawSprite(ctx, 'ball', x, 30 - icon / 2, icon, icon);
   }
+  ctx.textAlign = 'right';
+  ctx.fillText(muted ? 'MUTE' : 'VOL ' + Math.round(volume * 100) + '%', W - 16, 56);
+  ctx.textAlign = 'left';
 }
 
 let lastTime = 0;
