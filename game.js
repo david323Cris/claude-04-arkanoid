@@ -40,24 +40,130 @@ const state = {
   shakeT: null,     // null = sin sacudida, o ms transcurridos
 };
 
-function createBlocks() {
+// Patrones fijos (niveles 1-5): una cadena por fila, 10 caracteres por fila
+//   '.' = hueco · '0'-'5' = índice en ROW_COLORS · 'G' = bloque gris
+const LEVEL_PATTERNS = [
+  // 1: layout original (6 filas completas)
+  [
+    '0000000000',
+    '1111111111',
+    '2222222222',
+    '3333333333',
+    '4444444444',
+    '5555555555',
+  ],
+  // 2: tablero de ajedrez
+  [
+    '0.0.0.0.0.',
+    '.1.1.1.1.1',
+    '2.2.2.2.2.',
+    '.3.3.3.3.3',
+    '4.4.4.4.4.',
+    '.5.5.5.5.5',
+  ],
+  // 3: pirámide
+  [
+    '....00....',
+    '...1111...',
+    '..222222..',
+    '.33333333.',
+    '4444444444',
+  ],
+  // 4: marco gris con interior de color
+  [
+    'GGGGGGGGGG',
+    'G11111111G',
+    'G22222222G',
+    'G33333333G',
+    'G44444444G',
+    'GGGGGGGGGG',
+  ],
+  // 5: columnas alternas con grises y huecos
+  [
+    'G0G0G0G0G0',
+    '1.1.1.1.1.',
+    'G2G2G2G2G2',
+    '.3.3.3.3.3',
+    'G4G4G4G4G4',
+    '5555555555',
+  ],
+];
+
+// Golpes que necesita un bloque gris en un nivel dado
+function grayHits(level) {
+  return level >= GRAY_HITS.level3Hits ? 3 : 2;
+}
+
+// PRNG determinista (mulberry32): mismo seed, misma secuencia en [0, 1)
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Parámetros de dificultad de los niveles procedurales (level >= PROC_START_LEVEL)
+function levelParams(level) {
+  const n = level - PROC_START_LEVEL;
+  return {
+    rows: Math.min(6 + Math.floor(n / 2), MAX_ROWS),
+    density: Math.min(0.70 + 0.03 * n, 1),
+    grayChance: Math.min(0.10 + 0.04 * n, 0.5),
+  };
+}
+
+function makeBlock(r, c, color, hits) {
+  return {
+    x: BLOCK.offsetX + c * BLOCK.w,
+    y: BLOCK.offsetY + r * BLOCK.h,
+    color,
+    alive: true,
+    explosionT: null,
+    hits,
+    maxHits: hits,
+  };
+}
+
+// Nivel procedural: reproducible porque el PRNG se siembra con el número de nivel
+function buildProceduralLevel(level) {
+  const { rows, density, grayChance } = levelParams(level);
+  const rng = mulberry32(level);
   const blocks = [];
-  for (let r = 0; r < BLOCK.rows; r++) {
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < BLOCK.cols; c++) {
-      blocks.push({
-        x: BLOCK.offsetX + c * BLOCK.w,
-        y: BLOCK.offsetY + r * BLOCK.h,
-        color: ROW_COLORS[r],
-        alive: true,
-        explosionT: null,
-        hits: 1,
-        maxHits: 1,
-      });
+      if (rng() >= density) continue;
+      const gray = rng() < grayChance;
+      blocks.push(gray
+        ? makeBlock(r, c, 'gray', grayHits(level))
+        : makeBlock(r, c, ROW_COLORS[r % ROW_COLORS.length], 1));
+    }
+  }
+  // Un nivel nunca queda vacío: se fuerza un bloque
+  if (blocks.length === 0) blocks.push(makeBlock(0, 0, ROW_COLORS[0], 1));
+  return blocks;
+}
+
+// Devuelve la lista de bloques del nivel (patrón fijo o procedural)
+function buildLevel(level) {
+  if (level >= PROC_START_LEVEL) return buildProceduralLevel(level);
+  const pattern = LEVEL_PATTERNS[level - 1];
+  const blocks = [];
+  for (let r = 0; r < pattern.length; r++) {
+    for (let c = 0; c < BLOCK.cols; c++) {
+      const ch = pattern[r][c];
+      if (ch === '.') continue;
+      blocks.push(ch === 'G'
+        ? makeBlock(r, c, 'gray', grayHits(level))
+        : makeBlock(r, c, ROW_COLORS[Number(ch)], 1));
     }
   }
   return blocks;
 }
-state.blocks = createBlocks();
+state.blocks = buildLevel(state.level);
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -119,7 +225,7 @@ function stickBall() {
 function resetGame() {
   state.score = 0;
   state.lives = INITIAL_LIVES;
-  state.blocks = createBlocks();
+  state.blocks = buildLevel(state.level);
   state.floatTexts = [];
   state.shakeT = null;
   state.paddle.x = (W - PADDLE.w) / 2;
