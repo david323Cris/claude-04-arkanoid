@@ -283,6 +283,7 @@ function bouncePaddle() {
   b.vx = speed * Math.sin(angle);
   b.vy = -speed * Math.cos(angle);
   b.y = PADDLE.y - BALL.size;                          // evita quedar dentro de la pala
+  playSound('bounce');
 }
 
 // Colisión bola-bloque: como máximo un bloque por frame; se invierte el eje
@@ -360,9 +361,9 @@ function updateBall(dt) {
   b.y += b.vy * dt;
 
   // Paredes laterales y techo
-  if (b.x < 0) { b.x = 0; b.vx = Math.abs(b.vx); }
-  else if (b.x + BALL.size > W) { b.x = W - BALL.size; b.vx = -Math.abs(b.vx); }
-  if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy); }
+  if (b.x < 0) { b.x = 0; b.vx = Math.abs(b.vx); playSound('bounce'); }
+  else if (b.x + BALL.size > W) { b.x = W - BALL.size; b.vx = -Math.abs(b.vx); playSound('bounce'); }
+  if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy); playSound('bounce'); }
 
   bouncePaddle();
   collideBlocks();
