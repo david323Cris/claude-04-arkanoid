@@ -113,7 +113,7 @@ function bouncePaddle() {
 function collideBlocks() {
   const b = state.ball;
   for (const blk of state.blocks) {
-    if (!blk.alive) continue;
+    if (!blk.alive || blk.explosionT !== null) continue;   // en explosión no colisiona
     const overlapX = Math.min(b.x + BALL.size - blk.x, blk.x + BLOCK.w - b.x);
     const overlapY = Math.min(b.y + BALL.size - blk.y, blk.y + BLOCK.h - b.y);
     if (overlapX <= 0 || overlapY <= 0) continue;
@@ -127,9 +127,18 @@ function collideBlocks() {
       b.y += fromTop ? -overlapY : overlapY;
       b.vy = fromTop ? -Math.abs(b.vy) : Math.abs(b.vy);
     }
-    blk.alive = false;
+    blk.explosionT = 0;
     state.score += POINTS_PER_BLOCK;
     return;
+  }
+}
+
+// Avanza las explosiones (ms) y elimina el bloque al terminar
+function updateExplosions(dt) {
+  for (const blk of state.blocks) {
+    if (!blk.alive || blk.explosionT === null) continue;
+    blk.explosionT += dt * 1000;
+    if (blk.explosionT >= EXPLOSION_DURATION) blk.alive = false;
   }
 }
 
@@ -164,13 +173,21 @@ function update(dt) {
     clampPaddle();
   }
   updateBall(dt);
+  updateExplosions(dt);
 }
 
 function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
   for (const blk of state.blocks) {
-    if (blk.alive) drawSprite(ctx, 'block_' + blk.color, blk.x, blk.y, BLOCK.w, BLOCK.h);
+    if (!blk.alive) continue;
+    if (blk.explosionT === null) {
+      drawSprite(ctx, 'block_' + blk.color, blk.x, blk.y, BLOCK.w, BLOCK.h);
+    } else {
+      const frames = EXPLOSION_FRAMES[blk.color];
+      const i = Math.min(frames.length - 1, Math.floor(blk.explosionT / (EXPLOSION_DURATION / frames.length)));
+      drawFrame(ctx, frames[i], blk.x, blk.y, BLOCK.w, BLOCK.h);
+    }
   }
   drawSprite(ctx, 'paddle', state.paddle.x, PADDLE.y, PADDLE.w, PADDLE.h);
   drawSprite(ctx, 'ball', state.ball.x, state.ball.y, BALL.size, BALL.size);
