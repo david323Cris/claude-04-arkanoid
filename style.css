@@ -1,0 +1,28 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #111;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game {
+  /* Resolución lógica 480x640; el CSS la escala manteniendo la proporción */
+  /* Ancho = el menor entre 100vw y 75vh (480/640), alto derivado: sin deformar */
+  width: min(100vw, 75vh);
+  height: auto;
+  aspect-ratio: 480 / 640;
+  background: #000;
+  touch-action: none;
+  image-rendering: pixelated;
+}
