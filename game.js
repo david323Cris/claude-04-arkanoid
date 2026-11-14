@@ -161,6 +161,12 @@ function breakBlock(blk) {
   if (blk.explosionT !== null) return;
   blk.explosionT = 0;
   state.score += POINTS_PER_BLOCK;
+  state.floatTexts.push({
+    x: blk.x + BLOCK.w / 2,
+    y: blk.y + BLOCK.h / 2,
+    text: '+' + POINTS_PER_BLOCK,
+    t: 0,
+  });
 }
 
 // Avanza los efectos (ms) y elimina los textos vencidos
@@ -246,9 +252,23 @@ function draw() {
   }
   drawSprite(ctx, 'paddle', state.paddle.x, PADDLE.y, PADDLE.w, PADDLE.h);
   drawSprite(ctx, 'ball', state.ball.x, state.ball.y, BALL.size, BALL.size);
+  drawFloatTexts();
   drawHud();
   if (state.status === 'won') drawEndScreen('¡Ganaste!');
   else if (state.status === 'gameover') drawEndScreen('Game Over');
+}
+
+// Textos flotantes: suben a riseSpeed px/s y su alfa baja de 1 a 0 con t / life
+function drawFloatTexts() {
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const ft of state.floatTexts) {
+    ctx.globalAlpha = Math.max(0, 1 - ft.t / FLOAT_TEXT.life);
+    ctx.fillText(ft.text, ft.x, ft.y - FLOAT_TEXT.riseSpeed * ft.t / 1000);
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawEndScreen(title) {
