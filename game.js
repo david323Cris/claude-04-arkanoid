@@ -223,6 +223,7 @@ function stickBall() {
 }
 
 function resetGame() {
+  state.level = 1;
   state.score = 0;
   state.lives = INITIAL_LIVES;
   state.blocks = buildLevel(state.level);
@@ -232,9 +233,17 @@ function resetGame() {
   stickBall();
 }
 
-// Espacio / click / tap: lanza la bola, o reinicia si la partida terminó
+// Pasa al nivel siguiente: puntaje y vidas se conservan; los efectos en curso siguen
+function nextLevel() {
+  state.level += 1;
+  state.blocks = buildLevel(state.level);
+  stickBall();
+}
+
+// Espacio / click / tap: lanza la bola, avanza de nivel, o reinicia si la partida terminó
 function onAction() {
-  if (state.status === 'won' || state.status === 'gameover') resetGame();
+  if (state.status === 'gameover') resetGame();
+  else if (state.status === 'levelup') nextLevel();
   else launchBall();
 }
 
@@ -339,7 +348,7 @@ function updateExplosions(dt) {
 
 function updateBall(dt) {
   const b = state.ball;
-  if (state.status === 'won' || state.status === 'gameover') return;
+  if (state.status === 'levelup' || state.status === 'gameover') return;
   if (b.stuck) {
     // Pegada al centro de la pala
     b.x = state.paddle.x + (PADDLE.w - BALL.size) / 2;
@@ -378,9 +387,9 @@ function update(dt) {
   updateExplosions(dt);
   updateEffects(dt);
 
-  // Victoria: no queda ningún bloque (tras terminar la última explosión)
+  // Nivel superado: no queda ningún bloque (tras terminar la última explosión)
   if (state.status === 'playing' && state.blocks.every((blk) => !blk.alive)) {
-    state.status = 'won';
+    state.status = 'levelup';
   }
 }
 
@@ -417,8 +426,8 @@ function draw() {
   drawFloatTexts();
   ctx.restore();
   drawHud();
-  if (state.status === 'won') drawEndScreen('¡Ganaste!');
-  else if (state.status === 'gameover') drawEndScreen('Game Over');
+  if (state.status === 'levelup') drawEndScreen('Nivel ' + (state.level + 1), 'continuar');
+  else if (state.status === 'gameover') drawEndScreen('Game Over', 'reiniciar');
 }
 
 // Textos flotantes: suben a riseSpeed px/s y su alfa baja de 1 a 0 con t / life
@@ -434,7 +443,7 @@ function drawFloatTexts() {
   ctx.globalAlpha = 1;
 }
 
-function drawEndScreen(title) {
+function drawEndScreen(title, action) {
   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#fff';
@@ -445,7 +454,7 @@ function drawEndScreen(title) {
   ctx.font = '24px monospace';
   ctx.fillText('Puntaje: ' + state.score, W / 2, H / 2 + 10);
   ctx.font = '18px monospace';
-  ctx.fillText('Espacio, click o tap para reiniciar', W / 2, H / 2 + 50);
+  ctx.fillText('Espacio, click o tap para ' + action, W / 2, H / 2 + 50);
 }
 
 function drawHud() {
