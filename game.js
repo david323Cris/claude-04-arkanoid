@@ -6,11 +6,13 @@ const MAX_DT = 0.05;                                   // s, límite del delta t
 const BLOCK = { w: 40, h: 20, cols: 10, rows: 6, offsetX: 40, offsetY: 80 };
 const ROW_COLORS = ['red', 'yellow', 'cyan', 'magenta', 'hotpink', 'green'];
 const POINTS_PER_BLOCK = 10;
+const INITIAL_LIVES = 3;
 
 // Estado del juego
 const state = {
   status: 'ready',
   score: 0,
+  lives: INITIAL_LIVES,
   paddle: { x: (W - PADDLE.w) / 2 },
   ball: { x: 0, y: 0, vx: 0, vy: 0, stuck: true },
   blocks: [],   // { x, y, color, alive, explosionT }
@@ -162,8 +164,14 @@ function updateBall(dt) {
   bouncePaddle();
   collideBlocks();
 
-  // Provisional hasta el paso 8 (vidas): si cae por abajo vuelve pegada a la pala
-  if (b.y > H) stickBall();
+  // Si cae por abajo se pierde una vida y la bola vuelve pegada a la pala
+  if (b.y > H) loseLife();
+}
+
+function loseLife() {
+  // Provisional hasta el paso 9: al llegar a 0 aún no hay pantalla de Game Over
+  state.lives = Math.max(0, state.lives - 1);
+  stickBall();
 }
 
 function update(dt) {
@@ -191,6 +199,17 @@ function draw() {
   }
   drawSprite(ctx, 'paddle', state.paddle.x, PADDLE.y, PADDLE.w, PADDLE.h);
   drawSprite(ctx, 'ball', state.ball.x, state.ball.y, BALL.size, BALL.size);
+  drawHud();
+}
+
+function drawHud() {
+  ctx.fillStyle = '#fff';
+  ctx.font = '20px monospace';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillText('Puntaje: ' + state.score, 16, 30);
+  ctx.textAlign = 'right';
+  ctx.fillText('Vidas: ' + state.lives, W - 16, 30);
 }
 
 let lastTime = 0;
