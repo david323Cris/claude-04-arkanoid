@@ -73,21 +73,21 @@ Convenciones:
 9. Implementar los estados `won` y `gameover` con mensaje en el canvas y reinicio con Espacio, click o tap.
 ## Criterios de aceptación
 
-- [ ] Abrir `index.html` directamente en un navegador carga el juego sin errores en la consola.
-- [ ] La página muestra pala, bola y 60 bloques (6 filas x 10 columnas) con los sprites del spritesheet.
-- [ ] La pala se mueve con ← → y con A D, y no sale de los límites 0 a 480.
-- [ ] La pala sigue el cursor del mouse y el dedo al arrastrar en pantalla táctil.
-- [ ] Al inicio la bola está pegada a la pala y se lanza con Espacio, click o tap.
-- [ ] La bola rebota en las paredes laterales y el techo.
-- [ ] Golpear la pala por el borde desvía la bola más que por el centro, y la rapidez de la bola no cambia.
-- [ ] Al golpear un bloque, este desaparece tras la animación de explosión y el puntaje sube exactamente 10.
-- [ ] Un bloque en explosión no cambia la trayectoria de la bola.
-- [ ] Si la bola cae por abajo, las vidas bajan en 1, la bola vuelve pegada a la pala y la partida continúa.
-- [ ] Al perder la tercera vida aparece "Game Over" y el juego se detiene.
-- [ ] Al romper los 60 bloques aparece "¡Ganaste!" y el juego se detiene.
-- [ ] Desde "Game Over" o "¡Ganaste!", Espacio, click o tap reinician puntaje (0), vidas (3) y bloques (60).
-- [ ] El canvas se ajusta a una ventana de 360x640 sin scroll horizontal y manteniendo la proporción.
-- [ ] El puntaje y las vidas restantes son visibles en el canvas durante la partida.
+- [x] Abrir `index.html` directamente en un navegador carga el juego sin errores en la consola.
+- [x] La página muestra pala, bola y 60 bloques (6 filas x 10 columnas) con los sprites del spritesheet.
+- [x] La pala se mueve con ← → y con A D, y no sale de los límites 0 a 480.
+- [x] La pala sigue el cursor del mouse y el dedo al arrastrar en pantalla táctil.
+- [x] Al inicio la bola está pegada a la pala y se lanza con Espacio, click o tap.
+- [x] La bola rebota en las paredes laterales y el techo.
+- [x] Golpear la pala por el borde desvía la bola más que por el centro, y la rapidez de la bola no cambia.
+- [x] Al golpear un bloque, este desaparece tras la animación de explosión y el puntaje sube exactamente 10.
+- [x] Un bloque en explosión no cambia la trayectoria de la bola.
+- [x] Si la bola cae por abajo, las vidas bajan en 1, la bola vuelve pegada a la pala y la partida continúa.
+- [x] Al perder la tercera vida aparece "Game Over" y el juego se detiene.
+- [x] Al romper los 60 bloques aparece "¡Ganaste!" y el juego se detiene.
+- [x] Desde "Game Over" o "¡Ganaste!", Espacio, click o tap reinician puntaje (0), vidas (3) y bloques (60).
+- [x] El canvas se ajusta a una ventana de 360x640 sin scroll horizontal y manteniendo la proporción.
+- [x] El puntaje y las vidas restantes son visibles en el canvas durante la partida.
 ## Decisiones
 
 - **Sí:** tres archivos en la raíz (`index.html`, `style.css`, `game.js`). `assets/spritesheet.js` exige el HTML en la raíz y un MVP no necesita más módulos.
