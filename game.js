@@ -167,6 +167,7 @@ function breakBlock(blk) {
     text: '+' + POINTS_PER_BLOCK,
     t: 0,
   });
+  state.shakeT = 0;   // reinicia la sacudida, no se acumula
 }
 
 // Avanza los efectos (ms) y elimina los textos vencidos
@@ -174,6 +175,10 @@ function updateEffects(dt) {
   const ms = dt * 1000;
   for (const ft of state.floatTexts) ft.t += ms;
   state.floatTexts = state.floatTexts.filter((ft) => ft.t < FLOAT_TEXT.life);
+  if (state.shakeT !== null) {
+    state.shakeT += ms;
+    if (state.shakeT >= SHAKE.duration) state.shakeT = null;
+  }
 }
 
 // Avanza las explosiones (ms) y elimina el bloque al terminar
@@ -235,6 +240,13 @@ function update(dt) {
 function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
+
+  // Área de juego con offset de shake (decae linealmente a 0); HUD y pantalla final quedan fuera
+  ctx.save();
+  if (state.shakeT !== null) {
+    const k = SHAKE.magnitude * (1 - state.shakeT / SHAKE.duration);
+    ctx.translate((Math.random() * 2 - 1) * k, (Math.random() * 2 - 1) * k);
+  }
   for (const blk of state.blocks) {
     if (!blk.alive) continue;
     if (blk.explosionT === null) {
@@ -253,6 +265,7 @@ function draw() {
   drawSprite(ctx, 'paddle', state.paddle.x, PADDLE.y, PADDLE.w, PADDLE.h);
   drawSprite(ctx, 'ball', state.ball.x, state.ball.y, BALL.size, BALL.size);
   drawFloatTexts();
+  ctx.restore();
   drawHud();
   if (state.status === 'won') drawEndScreen('¡Ganaste!');
   else if (state.status === 'gameover') drawEndScreen('Game Over');
