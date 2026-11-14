@@ -50,6 +50,8 @@ function createBlocks() {
         color: ROW_COLORS[r],
         alive: true,
         explosionT: null,
+        hits: 1,
+        maxHits: 1,
       });
     }
   }
@@ -187,7 +189,9 @@ function collideBlocks() {
       b.y += fromTop ? -overlapY : overlapY;
       b.vy = fromTop ? -Math.abs(b.vy) : Math.abs(b.vy);
     }
-    breakBlock(blk);
+    // Golpe no letal: descuenta un golpe y solo rebota; el letal rompe el bloque
+    blk.hits -= 1;
+    if (blk.hits <= 0) breakBlock(blk);
     return;
   }
 }
@@ -287,7 +291,10 @@ function draw() {
   for (const blk of state.blocks) {
     if (!blk.alive) continue;
     if (blk.explosionT === null) {
+      // Bloque dañado (le quedan menos golpes que su máximo): atenuado
+      if (blk.hits < blk.maxHits) ctx.globalAlpha = DAMAGED_ALPHA;
       drawSprite(ctx, 'block_' + blk.color, blk.x, blk.y, BLOCK.w, BLOCK.h);
+      ctx.globalAlpha = 1;
     } else {
       const frames = EXPLOSION_FRAMES[blk.color];
       const i = Math.min(frames.length - 1, Math.floor(blk.explosionT / (EXPLOSION_DURATION / frames.length)));
