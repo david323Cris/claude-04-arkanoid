@@ -1,6 +1,6 @@
 # SPEC 04 — Sonido de rebotes y rotura de bloques
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-11-14
 > **Objective:** Añadir sonido al juego: la bola suena al rebotar en paredes, techo y pala, el bloque suena al ser golpeado, y el jugador puede graduar el volumen con el teclado y silenciar todo con la tecla M.
@@ -70,26 +70,26 @@ Convenciones:
 
 ## Criterios de aceptación
 
-- [ ] El juego carga sin errores en la consola y se juega igual que con las SPEC 01 y 02.
-- [ ] Al rebotar la bola en la pared izquierda, la pared derecha o el techo suena `ball-bounce.mp3`.
-- [ ] Al rebotar la bola en la pala suena `ball-bounce.mp3`.
-- [ ] Al golpear un bloque suena `break-sound.mp3` y no suena `ball-bounce.mp3` en ese golpe.
-- [ ] Llamar dos veces seguidas a `breakBlock(blk)` con el mismo bloque hace sonar `break-sound.mp3` una sola vez.
-- [ ] No suena nada al lanzar la bola, al caer por abajo ni en las pantallas `won` y `gameover`.
-- [ ] Dos bloques rotos en rápida sucesión reinician el sonido sin errores ni acumular instancias.
-- [ ] Al cargar, todos los sonidos tienen volumen 0.5 y el HUD muestra `VOL 50%`.
-- [ ] ↑ o + suben el volumen en 0.1 y ↓ o - lo bajan en 0.1, en cualquier estado, y el HUD se actualiza.
-- [ ] El volumen no baja de 0% ni sube de 100%, y siempre es múltiplo exacto de 10% (sin valores como 30.000000000000004%).
-- [ ] Todos los sonidos usan el mismo volumen tras cambiarlo; el siguiente rebote y la siguiente rotura suenan más fuertes o más bajos.
-- [ ] Pulsar ↑ o ↓ no desplaza la página.
-- [ ] Cambiar el volumen mientras está silenciado no quita el silencio; al quitarlo suena al nuevo volumen.
-- [ ] Reiniciar la partida conserva el volumen elegido; recargar la página vuelve a 50%.
-- [ ] M silencia el juego en `ready`, `playing`, `won` y `gameover`; pulsarla de nuevo restaura el sonido.
-- [ ] Mantener M pulsada no alterna el silencio repetidamente.
-- [ ] Mientras está silenciado, el HUD muestra `MUTE` en lugar de `VOL NN%` sin sacudirse; al restaurar el sonido vuelve `VOL NN%`.
-- [ ] Reiniciar desde "Game Over" o "¡Ganaste!" conserva el estado de silencio.
-- [ ] Recargar la página arranca con sonido activado.
-- [ ] Si un archivo de audio no existe o `play()` falla, el juego sigue funcionando sin excepciones sin capturar.
+- [x] El juego carga sin errores en la consola y se juega igual que con las SPEC 01 y 02.
+- [x] Al rebotar la bola en la pared izquierda, la pared derecha o el techo suena `ball-bounce.mp3`.
+- [x] Al rebotar la bola en la pala suena `ball-bounce.mp3`.
+- [x] Al golpear un bloque suena `break-sound.mp3` y no suena `ball-bounce.mp3` en ese golpe.
+- [x] Llamar dos veces seguidas a `breakBlock(blk)` con el mismo bloque hace sonar `break-sound.mp3` una sola vez.
+- [x] No suena nada al lanzar la bola, al caer por abajo ni en las pantallas `won` y `gameover`.
+- [x] Dos bloques rotos en rápida sucesión reinician el sonido sin errores ni acumular instancias.
+- [x] Al cargar, todos los sonidos tienen volumen 0.5 y el HUD muestra `VOL 50%`.
+- [x] ↑ o + suben el volumen en 0.1 y ↓ o - lo bajan en 0.1, en cualquier estado, y el HUD se actualiza.
+- [x] El volumen no baja de 0% ni sube de 100%, y siempre es múltiplo exacto de 10% (sin valores como 30.000000000000004%).
+- [x] Todos los sonidos usan el mismo volumen tras cambiarlo; el siguiente rebote y la siguiente rotura suenan más fuertes o más bajos.
+- [x] Pulsar ↑ o ↓ no desplaza la página.
+- [x] Cambiar el volumen mientras está silenciado no quita el silencio; al quitarlo suena al nuevo volumen.
+- [x] Reiniciar la partida conserva el volumen elegido; recargar la página vuelve a 50%.
+- [x] M silencia el juego en `ready`, `playing`, `won` y `gameover`; pulsarla de nuevo restaura el sonido.
+- [x] Mantener M pulsada no alterna el silencio repetidamente.
+- [x] Mientras está silenciado, el HUD muestra `MUTE` en lugar de `VOL NN%` sin sacudirse; al restaurar el sonido vuelve `VOL NN%`.
+- [x] Reiniciar desde "Game Over" o "¡Ganaste!" conserva el estado de silencio.
+- [x] Recargar la página arranca con sonido activado.
+- [x] Si un archivo de audio no existe o `play()` falla, el juego sigue funcionando sin excepciones sin capturar.
 
 ## Decisiones
 
