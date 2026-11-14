@@ -74,9 +74,23 @@ function stickBall() {
   state.status = 'ready';
 }
 
+function resetGame() {
+  state.score = 0;
+  state.lives = INITIAL_LIVES;
+  state.blocks = createBlocks();
+  state.paddle.x = (W - PADDLE.w) / 2;
+  stickBall();
+}
+
+// Espacio / click / tap: lanza la bola, o reinicia si la partida terminó
+function onAction() {
+  if (state.status === 'won' || state.status === 'gameover') resetGame();
+  else launchBall();
+}
+
 function launchBall() {
   const b = state.ball;
-  if (!b.stuck) return;
+  if (!b.stuck || state.status !== 'ready') return;
   // Hacia arriba con 20° de desvío, a izquierda o derecha al azar
   const angle = (Math.random() < 0.5 ? -1 : 1) * 20 * Math.PI / 180;
   b.vx = BALL.speed * Math.sin(angle);
@@ -88,10 +102,10 @@ function launchBall() {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
-    launchBall();
+    if (!e.repeat) onAction();
   }
 });
-canvas.addEventListener('pointerdown', launchBall);
+canvas.addEventListener('pointerdown', onAction);
 
 // Rebote en la pala: el ángulo depende del punto de impacto (borde = maxAngle),
 // la rapidez se mantiene en BALL.speed
@@ -146,6 +160,7 @@ function updateExplosions(dt) {
 
 function updateBall(dt) {
   const b = state.ball;
+  if (state.status === 'won' || state.status === 'gameover') return;
   if (b.stuck) {
     // Pegada al centro de la pala
     b.x = state.paddle.x + (PADDLE.w - BALL.size) / 2;
@@ -169,9 +184,9 @@ function updateBall(dt) {
 }
 
 function loseLife() {
-  // Provisional hasta el paso 9: al llegar a 0 aún no hay pantalla de Game Over
-  state.lives = Math.max(0, state.lives - 1);
-  stickBall();
+  state.lives -= 1;
+  if (state.lives <= 0) state.status = 'gameover';
+  else stickBall();
 }
 
 function update(dt) {
@@ -182,6 +197,11 @@ function update(dt) {
   }
   updateBall(dt);
   updateExplosions(dt);
+
+  // Victoria: no queda ningún bloque (tras terminar la última explosión)
+  if (state.status === 'playing' && state.blocks.every((blk) => !blk.alive)) {
+    state.status = 'won';
+  }
 }
 
 function draw() {
@@ -200,6 +220,22 @@ function draw() {
   drawSprite(ctx, 'paddle', state.paddle.x, PADDLE.y, PADDLE.w, PADDLE.h);
   drawSprite(ctx, 'ball', state.ball.x, state.ball.y, BALL.size, BALL.size);
   drawHud();
+  if (state.status === 'won') drawEndScreen('¡Ganaste!');
+  else if (state.status === 'gameover') drawEndScreen('Game Over');
+}
+
+function drawEndScreen(title) {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 48px monospace';
+  ctx.fillText(title, W / 2, H / 2 - 40);
+  ctx.font = '24px monospace';
+  ctx.fillText('Puntaje: ' + state.score, W / 2, H / 2 + 10);
+  ctx.font = '18px monospace';
+  ctx.fillText('Espacio, click o tap para reiniciar', W / 2, H / 2 + 50);
 }
 
 function drawHud() {
