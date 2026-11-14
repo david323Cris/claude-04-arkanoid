@@ -263,6 +263,9 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) onAction();
+  } else if (e.code === 'KeyM') {
+    // Alterna el silencio en cualquier estado; se ignora la repetición al mantener
+    if (!e.repeat) muted = !muted;
   }
 });
 canvas.addEventListener('pointerdown', onAction);
@@ -325,6 +328,7 @@ function breakBlock(blk) {
     t: 0,
   });
   state.shakeT = 0;   // reinicia la sacudida, no se acumula
+  playSound('break');
 }
 
 // Avanza los efectos (ms) y elimina los textos vencidos
@@ -471,6 +475,11 @@ function drawHud() {
   for (let i = 0; i < state.lives; i++) {
     const x = W - 16 - icon - i * (icon + gap);
     drawSprite(ctx, 'ball', x, 30 - icon / 2, icon, icon);
+  }
+  if (muted) {
+    ctx.textAlign = 'right';
+    ctx.fillText('MUTE', W - 16, 56);
+    ctx.textAlign = 'left';
   }
 }
 
