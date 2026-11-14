@@ -8,4 +8,4 @@ AutoCreateBranch: true
 # AutoCommitSteps — controls whether /spec-impl commits each finished step.
 #   false (default) → /spec-impl never commits; committing is up to you
 #   true            → /spec-impl commits each step as spec-NN-step-MM
-AutoCommitSteps: true
+AutoCommitSteps: false
