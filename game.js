@@ -10,10 +10,27 @@ const INITIAL_LIVES = 3;
 const FADE_MS = 75;                                    // ms finales de la explosión con fade
 const FLOAT_TEXT = { life: 600, riseSpeed: 40 };       // ms, px/s
 const SHAKE = { duration: 120, magnitude: 3 };         // ms, px
+const SOUND_VOLUME = 0.5;                              // volumen inicial (0 a 1)
+const SOUND_FILES = {
+  bounce: 'assets/sounds/ball-bounce.mp3',
+  break: 'assets/sounds/break-sound.mp3',
+};
+const SPEED_PER_LEVEL = 0.05;                          // +5% de BALL.speed por nivel
+const MAX_SPEED_FACTOR = 1.6;                          // tope: 1.6 × BALL.speed (≈ nivel 13)
+const MAX_ROWS = 10;                                   // filas máximas (offsetY 80 + 10×20 = 280 px)
+const PROC_START_LEVEL = 6;                            // primer nivel procedural
+const GRAY_HITS = { base: 2, level3Hits: 10 };         // 2 golpes; 3 desde el nivel 10
+const DAMAGED_ALPHA = 0.6;
+
+// Rapidez de la bola en un nivel dado
+function levelSpeed(level) {
+  return BALL.speed * Math.min(1 + SPEED_PER_LEVEL * (level - 1), MAX_SPEED_FACTOR);
+}
 
 // Estado del juego
 const state = {
   status: 'ready',
+  level: 1,
   score: 0,
   lives: INITIAL_LIVES,
   paddle: { x: (W - PADDLE.w) / 2 },
@@ -43,6 +60,24 @@ state.blocks = createBlocks();
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+
+// --- Sonido ---
+// Estado de audio fuera de `state`: no se reinicia con resetGame()
+const sounds = {};
+let muted = false;
+for (const name in SOUND_FILES) {
+  sounds[name] = new Audio(SOUND_FILES[name]);
+  sounds[name].volume = SOUND_VOLUME;
+}
+
+// Un único Audio por sonido: si aún suena, se reinicia en lugar de clonarse
+function playSound(name) {
+  if (muted) return;
+  const s = sounds[name];
+  s.currentTime = 0;
+  const p = s.play();
+  if (p) p.catch(() => {});   // autoplay bloqueado o archivo ausente: se ignora
+}
 
 // --- Controles ---
 const keys = { left: false, right: false };
@@ -100,8 +135,9 @@ function launchBall() {
   if (!b.stuck || state.status !== 'ready') return;
   // Hacia arriba con 20° de desvío, a izquierda o derecha al azar
   const angle = (Math.random() < 0.5 ? -1 : 1) * 20 * Math.PI / 180;
-  b.vx = BALL.speed * Math.sin(angle);
-  b.vy = -BALL.speed * Math.cos(angle);
+  const speed = levelSpeed(state.level);
+  b.vx = speed * Math.sin(angle);
+  b.vy = -speed * Math.cos(angle);
   b.stuck = false;
   state.status = 'playing';
 }
@@ -126,8 +162,9 @@ function bouncePaddle() {
 
   const hit = ((b.x + BALL.size / 2) - (p.x + PADDLE.w / 2)) / (PADDLE.w / 2);
   const angle = Math.max(-1, Math.min(1, hit)) * BALL.maxAngle * Math.PI / 180;
-  b.vx = BALL.speed * Math.sin(angle);
-  b.vy = -BALL.speed * Math.cos(angle);
+  const speed = levelSpeed(state.level);
+  b.vx = speed * Math.sin(angle);
+  b.vy = -speed * Math.cos(angle);
   b.y = PADDLE.y - BALL.size;                          // evita quedar dentro de la pala
 }
 
@@ -304,6 +341,9 @@ function drawHud() {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.fillText('Puntaje: ' + state.score, 16, 30);
+  ctx.textAlign = 'center';
+  ctx.fillText('Nivel ' + state.level, W / 2, 30);
+  ctx.textAlign = 'left';
   const icon = 16, gap = 6;
   for (let i = 0; i < state.lives; i++) {
     const x = W - 16 - icon - i * (icon + gap);
