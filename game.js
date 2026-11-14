@@ -244,8 +244,11 @@ function drawHud() {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.fillText('Puntaje: ' + state.score, 16, 30);
-  ctx.textAlign = 'right';
-  ctx.fillText('Vidas: ' + state.lives, W - 16, 30);
+  const icon = 16, gap = 6;
+  for (let i = 0; i < state.lives; i++) {
+    const x = W - 16 - icon - i * (icon + gap);
+    drawSprite(ctx, 'ball', x, 30 - icon / 2, icon, icon);
+  }
 }
 
 let lastTime = 0;
