@@ -236,7 +236,12 @@ function draw() {
     } else {
       const frames = EXPLOSION_FRAMES[blk.color];
       const i = Math.min(frames.length - 1, Math.floor(blk.explosionT / (EXPLOSION_DURATION / frames.length)));
+      // Fade-out lineal de 1 a 0 durante los últimos FADE_MS de la explosión
+      const fadeStart = EXPLOSION_DURATION - FADE_MS;
+      const alpha = Math.max(0, Math.min(1, 1 - (blk.explosionT - fadeStart) / FADE_MS));
+      ctx.globalAlpha = alpha;
       drawFrame(ctx, frames[i], blk.x, blk.y, BLOCK.w, BLOCK.h);
+      ctx.globalAlpha = 1;
     }
   }
   drawSprite(ctx, 'paddle', state.paddle.x, PADDLE.y, PADDLE.w, PADDLE.h);
