@@ -7,6 +7,9 @@ const BLOCK = { w: 40, h: 20, cols: 10, rows: 6, offsetX: 40, offsetY: 80 };
 const ROW_COLORS = ['red', 'yellow', 'cyan', 'magenta', 'hotpink', 'green'];
 const POINTS_PER_BLOCK = 10;
 const INITIAL_LIVES = 3;
+const FADE_MS = 75;                                    // ms finales de la explosión con fade
+const FLOAT_TEXT = { life: 600, riseSpeed: 40 };       // ms, px/s
+const SHAKE = { duration: 120, magnitude: 3 };         // ms, px
 
 // Estado del juego
 const state = {
@@ -16,6 +19,8 @@ const state = {
   paddle: { x: (W - PADDLE.w) / 2 },
   ball: { x: 0, y: 0, vx: 0, vy: 0, stuck: true },
   blocks: [],   // { x, y, color, alive, explosionT }
+  floatTexts: [],   // { x, y, text, t }  (t = ms transcurridos)
+  shakeT: null,     // null = sin sacudida, o ms transcurridos
 };
 
 function createBlocks() {
@@ -78,6 +83,8 @@ function resetGame() {
   state.score = 0;
   state.lives = INITIAL_LIVES;
   state.blocks = createBlocks();
+  state.floatTexts = [];
+  state.shakeT = null;
   state.paddle.x = (W - PADDLE.w) / 2;
   stickBall();
 }
@@ -143,10 +150,24 @@ function collideBlocks() {
       b.y += fromTop ? -overlapY : overlapY;
       b.vy = fromTop ? -Math.abs(b.vy) : Math.abs(b.vy);
     }
-    blk.explosionT = 0;
-    state.score += POINTS_PER_BLOCK;
+    breakBlock(blk);
     return;
   }
+}
+
+// Rompe un bloque: único lugar que inicia la explosión y suma el puntaje.
+// Idempotente por bloque y sin depender de la bola.
+function breakBlock(blk) {
+  if (blk.explosionT !== null) return;
+  blk.explosionT = 0;
+  state.score += POINTS_PER_BLOCK;
+}
+
+// Avanza los efectos (ms) y elimina los textos vencidos
+function updateEffects(dt) {
+  const ms = dt * 1000;
+  for (const ft of state.floatTexts) ft.t += ms;
+  state.floatTexts = state.floatTexts.filter((ft) => ft.t < FLOAT_TEXT.life);
 }
 
 // Avanza las explosiones (ms) y elimina el bloque al terminar
@@ -197,6 +218,7 @@ function update(dt) {
   }
   updateBall(dt);
   updateExplosions(dt);
+  updateEffects(dt);
 
   // Victoria: no queda ningún bloque (tras terminar la última explosión)
   if (state.status === 'playing' && state.blocks.every((blk) => !blk.alive)) {
