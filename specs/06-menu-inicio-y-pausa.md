@@ -1,6 +1,6 @@
 # SPEC 06 — Pantalla de inicio y menú de pausa
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01, SPEC 03, SPEC 04, SPEC 05
 > **Date:** 2026-11-14
 > **Objective:** Añadir una pantalla de inicio y un menú de pausa, operables con mouse o tap, que permitan jugar, reanudar, reiniciar, volver al inicio, ajustar el sonido, saltar a cualquier nivel del 1 al 10 y ver el récord de puntaje guardado.
