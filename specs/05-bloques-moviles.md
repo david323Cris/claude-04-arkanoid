@@ -79,21 +79,21 @@ Convenciones:
 
 ## Criterios de aceptación
 
-- [ ] El juego carga sin errores en la consola; los niveles 1 y 2 no tienen ningún bloque en movimiento.
-- [ ] En el nivel 3 (`slide`) exactamente 2 filas se deslizan, en sentidos opuestos, y rebotan al llegar al borde del canvas.
-- [ ] En el modo `slide` ningún bloque queda con `x < 0` ni `x + BLOCK.w > 480` en ningún momento.
-- [ ] En el nivel 5 (`wave`) las columnas oscilan verticalmente con desfase entre columnas y ningún bloque queda solapado con otro.
-- [ ] Un nivel nunca combina `slide` y `wave`: `levelMotion(level)` devuelve `wave` si `level % 3 === 2` y `slide` para el resto de niveles ≥ 3.
-- [ ] La velocidad de deslizamiento no supera 90 px/s, la amplitud de la onda no supera 12 px y el periodo no baja de 1600 ms en ningún nivel.
-- [ ] El número de filas móviles en `slide` crece con el nivel y no supera 8.
-- [ ] Una fila cuyos bloques extremos se rompen amplía su recorrido sin salirse del canvas; una fila sin recorrido posible permanece quieta.
-- [ ] La bola rebota correctamente en un bloque en movimiento (usa su posición actual) y no lo atraviesa durante el juego normal a 60 fps.
-- [ ] Un bloque en explosión sigue su fila o columna hasta que desaparece, y el `+10` aparece en su posición al romperse.
-- [ ] Los bloques están quietos en `ready` (bola pegada), en la pantalla de nivel y en `gameover`, y reanudan al lanzar la bola.
-- [ ] Perder una vida no reinicia las posiciones de los bloques.
-- [ ] Pasar de nivel o reiniciar desde `gameover` deja los bloques del nuevo nivel en su posición base (offset 0, `t = 0`).
-- [ ] Despejar un nivel con movimiento lleva al siguiente nivel como en la SPEC 03, sin errores.
-- [ ] Con niveles altos (≥ 25) el juego sigue funcionando sin errores y los parámetros están en sus topes.
+- [x] El juego carga sin errores en la consola; los niveles 1 y 2 no tienen ningún bloque en movimiento.
+- [x] En el nivel 3 (`slide`) exactamente 2 filas se deslizan, en sentidos opuestos, y rebotan al llegar al borde del canvas.
+- [x] En el modo `slide` ningún bloque queda con `x < 0` ni `x + BLOCK.w > 480` en ningún momento.
+- [x] En el nivel 5 (`wave`) las columnas oscilan verticalmente con desfase entre columnas y ningún bloque queda solapado con otro.
+- [x] Un nivel nunca combina `slide` y `wave`: `levelMotion(level)` devuelve `wave` si `level % 3 === 2` y `slide` para el resto de niveles ≥ 3.
+- [x] La velocidad de deslizamiento no supera 90 px/s, la amplitud de la onda no supera 12 px y el periodo no baja de 1600 ms en ningún nivel.
+- [x] El número de filas móviles en `slide` crece con el nivel y no supera 8.
+- [x] Una fila cuyos bloques extremos se rompen amplía su recorrido sin salirse del canvas; una fila sin recorrido posible permanece quieta.
+- [x] La bola rebota correctamente en un bloque en movimiento (usa su posición actual) y no lo atraviesa durante el juego normal a 60 fps.
+- [x] Un bloque en explosión sigue su fila o columna hasta que desaparece, y el `+10` aparece en su posición al romperse.
+- [x] Los bloques están quietos en `ready` (bola pegada), en la pantalla de nivel y en `gameover`, y reanudan al lanzar la bola.
+- [x] Perder una vida no reinicia las posiciones de los bloques.
+- [x] Pasar de nivel o reiniciar desde `gameover` deja los bloques del nuevo nivel en su posición base (offset 0, `t = 0`).
+- [x] Despejar un nivel con movimiento lleva al siguiente nivel como en la SPEC 03, sin errores.
+- [x] Con niveles altos (≥ 25) el juego sigue funcionando sin errores y los parámetros están en sus topes.
 
 ## Decisiones
 
