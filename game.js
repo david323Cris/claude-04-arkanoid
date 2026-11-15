@@ -304,10 +304,90 @@ function inRect(p, r) {
   return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 }
 
+let hoverId = null;   // id del botón bajo el mouse (solo pointerType 'mouse')
+
+// Cuadrícula de botones de nivel 1..MENU_LEVELS, centrada, que empieza en y
+function levelButtons(y) {
+  const L = MENU_LAYOUT.levelBtn;
+  const x0 = (W - (L.cols * L.w + (L.cols - 1) * L.gap)) / 2;
+  const list = [];
+  for (let n = 1; n <= MENU_LEVELS; n++) {
+    const i = n - 1;
+    list.push({
+      id: 'level-' + n,
+      x: x0 + (i % L.cols) * (L.w + L.gap),
+      y: y + Math.floor(i / L.cols) * (L.h + L.gap),
+      w: L.w, h: L.h,
+      label: String(n),
+      active: state.status === 'paused' && state.level === n,   // resalta el nivel actual en la pausa
+    });
+  }
+  return list;
+}
+
+// Botones de una pantalla, calculados en cada llamada: [{ id, x, y, w, h, label, active, disabled }]
+function menuButtons(screen) {
+  const B = MENU_LAYOUT.button;
+  if (screen !== 'paused') return [];   // la pantalla de inicio llega en el paso 4
+  const P = MENU_LAYOUT.pause;
+  const btn = (id, y, label, extra) => ({ id, x: B.x, y, w: B.w, h: B.h, label, active: false, ...extra });
+  const sw = [60, 90, 60], sg = (B.w - 210) / 2;   // fila de sonido: VOL − · MUTE · VOL +
+  const soundLabels = ['VOL −', muted ? 'MUTE' : 'VOL ' + Math.round(volume * 100) + '%', 'VOL +'];
+  const soundIds = ['vol-down', 'mute', 'vol-up'];
+  let sx = B.x;
+  const sound = soundIds.map((id, i) => {
+    const b = { id, x: sx, y: P.soundY, w: sw[i], h: B.h, label: soundLabels[i], active: false };
+    sx += sw[i] + sg;
+    return b;
+  });
+  return [
+    btn('continue', P.continueY, 'Continuar'),
+    btn('restart', P.restartY, 'Reiniciar partida'),
+    btn('home', P.homeY, 'Volver al inicio', { disabled: true }),   // se activa en el paso 4
+    ...sound,
+    ...levelButtons(P.levelsY),
+  ];
+}
+
+// Botón bajo (x, y) de la pantalla actual, o null
+function buttonAt(x, y) {
+  return menuButtons(state.status).find((b) => !b.disabled && inRect({ x, y }, b)) || null;
+}
+
+// Ejecuta la acción del botón bajo (x, y), si hay
+function handleMenuClick(x, y) {
+  const b = buttonAt(x, y);
+  if (!b) return;
+  if (b.id === 'continue') resumeGame();
+  else if (b.id === 'restart') startGame(1);
+  else if (b.id === 'vol-down') changeVolume(-VOLUME_STEP);
+  else if (b.id === 'vol-up') changeVolume(VOLUME_STEP);
+  else if (b.id === 'mute') muted = !muted;
+  else if (b.id.startsWith('level-')) startGame(Number(b.id.slice(6)));
+}
+
+// Hover: solo mouse. Actualiza hoverId con el botón de menú o el botón de pausa bajo el puntero
+window.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse') return;
+  const p = pointerToLogical(e);
+  if (isFrozen()) {
+    const b = buttonAt(p.x, p.y);
+    hoverId = b ? b.id : null;
+  } else if ((state.status === 'ready' || state.status === 'playing') && inRect(p, MENU_LAYOUT.pauseBtn)) {
+    hoverId = 'pause';
+  } else {
+    hoverId = null;
+  }
+});
+
 // Único manejador de pointerdown sobre el canvas:
-// menu/paused → menú (paso 3) · botón de pausa → pausa sin lanzar · resto → como siempre
+// menu/paused → menú · botón de pausa → pausa sin lanzar · resto → como siempre
 canvas.addEventListener('pointerdown', (e) => {
-  if (isFrozen()) return;   // los botones de menú llegan en el paso 3
+  if (isFrozen()) {
+    const p = pointerToLogical(e);
+    handleMenuClick(p.x, p.y);
+    return;
+  }
   if ((state.status === 'ready' || state.status === 'playing') &&
       inRect(pointerToLogical(e), MENU_LAYOUT.pauseBtn)) {
     pauseGame();
@@ -344,6 +424,7 @@ function startGame(level = 1) {
   state.shakeT = null;
   state.paddle.x = (W - PADDLE.w) / 2;
   state.pausedFrom = null;
+  hoverId = null;
   stickBall();
 }
 
@@ -356,6 +437,7 @@ function pauseGame() {
   if (state.status !== 'ready' && state.status !== 'playing') return;
   state.pausedFrom = state.status;
   state.status = 'paused';
+  hoverId = null;
 }
 
 // 'paused' → estado previo exacto
@@ -363,6 +445,7 @@ function resumeGame() {
   if (state.status !== 'paused') return;
   state.status = state.pausedFrom;
   state.pausedFrom = null;
+  hoverId = null;
 }
 
 // Pasa al nivel siguiente: puntaje y vidas se conservan; los efectos en curso siguen
@@ -626,9 +709,10 @@ function draw() {
   if (state.status === 'levelup') drawEndScreen('Nivel ' + (state.level + 1), 'continuar');
   else if (state.status === 'gameover') drawEndScreen('Game Over', 'reiniciar');
   else if (state.status === 'paused') drawPauseOverlay();
+  if (state.status !== 'paused') canvas.style.cursor = hoverId === 'pause' ? 'pointer' : '';
 }
 
-// Paso 1: solo overlay oscuro con el texto PAUSA (el menú completo llega en el paso 3)
+// Menú de pausa: juego detenido debajo, overlay oscuro y botones
 function drawPauseOverlay() {
   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.fillRect(0, 0, W, H);
@@ -636,7 +720,27 @@ function drawPauseOverlay() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 48px monospace';
-  ctx.fillText('PAUSA', W / 2, H / 2);
+  ctx.fillText('PAUSA', W / 2, MENU_LAYOUT.pause.titleY);
+  ctx.font = '16px monospace';
+  ctx.fillText('Ir al nivel', W / 2, MENU_LAYOUT.pause.levelsLabelY);
+  const buttons = menuButtons('paused');
+  for (const b of buttons) drawButton(b, b.id === hoverId);
+  canvas.style.cursor = buttons.some((b) => b.id === hoverId && !b.disabled) ? 'pointer' : '';
+}
+
+function drawButton(b, hovered) {
+  ctx.fillStyle = b.disabled ? 'rgba(255, 255, 255, 0.05)'
+    : b.active ? 'rgba(255, 215, 0, 0.35)'
+    : hovered ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)';
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.strokeStyle = b.active ? '#ffd700' : b.disabled ? '#555' : '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+  ctx.fillStyle = b.disabled ? '#777' : '#fff';
+  ctx.font = '18px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2);
 }
 
 // Textos flotantes: suben a riseSpeed px/s y su alfa baja de 1 a 0 con t / life
