@@ -1,6 +1,6 @@
 # SPEC 05 — Bloques móviles (deslizamiento y oscilación)
 
-> **Status:** Draft
+> **Status:** Approved
 > **Depends on:** SPEC 03
 > **Date:** 2026-11-14
 > **Objective:** Desde el nivel 3, hacer que los bloques se muevan dentro del nivel, ya sea deslizando filas enteras en sentidos alternos o con una onda vertical suave, con una intensidad que crece con el nivel hasta un tope.
