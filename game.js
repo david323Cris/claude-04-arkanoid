@@ -453,9 +453,20 @@ function loseLife() {
   else stickBall();
 }
 
-// Mueve los bloques según state.motion.mode (wave se implementa en el paso 3)
+// Mueve los bloques según state.motion.mode
 function updateMotion(dt) {
   if (state.motion.mode === 'slide') updateSlide(dt);
+  else if (state.motion.mode === 'wave') updateWave(dt);
+}
+
+// Onda vertical: cada columna oscila con un desfase proporcional a su índice
+function updateWave(dt) {
+  const m = state.motion;
+  m.t += dt * 1000;   // dt en s → t en ms
+  const { amp, period } = waveParams(state.level);
+  for (const blk of state.blocks) {
+    blk.y = blk.baseY + amp * Math.sin(2 * Math.PI * m.t / period + blk.col * WAVE.phasePerCol);
+  }
 }
 
 // Desliza las filas móviles como bloque rígido, rebotando en los bordes del canvas
