@@ -88,7 +88,7 @@ function makeMotion(level, blocks = []) {
 
 // Estado del juego
 const state = {
-  status: 'ready',
+  status: 'menu',   // 'menu' | 'ready' | 'playing' | 'paused' | 'levelup' | 'gameover'
   level: 1,
   score: 0,
   lives: INITIAL_LIVES,
@@ -325,12 +325,16 @@ function levelButtons(y) {
   return list;
 }
 
-// Botones de una pantalla, calculados en cada llamada: [{ id, x, y, w, h, label, active, disabled }]
+// Botones de una pantalla, calculados en cada llamada: [{ id, x, y, w, h, label, active }]
 function menuButtons(screen) {
   const B = MENU_LAYOUT.button;
-  if (screen !== 'paused') return [];   // la pantalla de inicio llega en el paso 4
-  const P = MENU_LAYOUT.pause;
   const btn = (id, y, label, extra) => ({ id, x: B.x, y, w: B.w, h: B.h, label, active: false, ...extra });
+  if (screen === 'menu') {
+    const S = MENU_LAYOUT.start;
+    return [btn('play', S.playY, 'Jugar'), ...levelButtons(S.levelsY)];
+  }
+  if (screen !== 'paused') return [];
+  const P = MENU_LAYOUT.pause;
   const sw = [60, 90, 60], sg = (B.w - 210) / 2;   // fila de sonido: VOL − · MUTE · VOL +
   const soundLabels = ['VOL −', muted ? 'MUTE' : 'VOL ' + Math.round(volume * 100) + '%', 'VOL +'];
   const soundIds = ['vol-down', 'mute', 'vol-up'];
@@ -343,7 +347,7 @@ function menuButtons(screen) {
   return [
     btn('continue', P.continueY, 'Continuar'),
     btn('restart', P.restartY, 'Reiniciar partida'),
-    btn('home', P.homeY, 'Volver al inicio', { disabled: true }),   // se activa en el paso 4
+    btn('home', P.homeY, 'Volver al inicio'),
     ...sound,
     ...levelButtons(P.levelsY),
   ];
@@ -351,15 +355,17 @@ function menuButtons(screen) {
 
 // Botón bajo (x, y) de la pantalla actual, o null
 function buttonAt(x, y) {
-  return menuButtons(state.status).find((b) => !b.disabled && inRect({ x, y }, b)) || null;
+  return menuButtons(state.status).find((b) => inRect({ x, y }, b)) || null;
 }
 
 // Ejecuta la acción del botón bajo (x, y), si hay
 function handleMenuClick(x, y) {
   const b = buttonAt(x, y);
   if (!b) return;
-  if (b.id === 'continue') resumeGame();
+  if (b.id === 'play') startGame(1);
+  else if (b.id === 'continue') resumeGame();
   else if (b.id === 'restart') startGame(1);
+  else if (b.id === 'home') goHome();
   else if (b.id === 'vol-down') changeVolume(-VOLUME_STEP);
   else if (b.id === 'vol-up') changeVolume(VOLUME_STEP);
   else if (b.id === 'mute') muted = !muted;
@@ -432,6 +438,13 @@ function resetGame() {
   startGame(1);
 }
 
+// Vuelve a la pantalla de inicio
+function goHome() {
+  state.status = 'menu';
+  state.pausedFrom = null;
+  hoverId = null;
+}
+
 // 'ready' | 'playing' → 'paused'; recuerda desde dónde se pausó
 function pauseGame() {
   if (state.status !== 'ready' && state.status !== 'playing') return;
@@ -479,7 +492,11 @@ function launchBall() {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
-    if (!e.repeat) onAction();
+    if (e.repeat) return;
+    if (state.status === 'menu') startGame(1);
+    else onAction();
+  } else if (e.code === 'Enter') {
+    if (!e.repeat && state.status === 'menu') startGame(1);
   } else if (e.code === 'KeyP' || e.code === 'Escape') {
     // Alterna pausa; se ignora la repetición al mantener la tecla
     if (e.repeat) return;
@@ -677,6 +694,11 @@ function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
 
+  if (state.status === 'menu') {
+    drawStartScreen();
+    return;
+  }
+
   // Área de juego con offset de shake (decae linealmente a 0); HUD y pantalla final quedan fuera
   ctx.save();
   if (state.shakeT !== null) {
@@ -725,18 +747,40 @@ function drawPauseOverlay() {
   ctx.fillText('Ir al nivel', W / 2, MENU_LAYOUT.pause.levelsLabelY);
   const buttons = menuButtons('paused');
   for (const b of buttons) drawButton(b, b.id === hoverId);
-  canvas.style.cursor = buttons.some((b) => b.id === hoverId && !b.disabled) ? 'pointer' : '';
+  canvas.style.cursor = buttons.some((b) => b.id === hoverId) ? 'pointer' : '';
+}
+
+// Pantalla de inicio: fondo negro, título, Jugar, selector de niveles y ayuda
+function drawStartScreen() {
+  const S = MENU_LAYOUT.start;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 56px monospace';
+  ctx.fillText('ARKANOID', W / 2, S.titleY);
+  ctx.font = '16px monospace';
+  ctx.fillText('Ir al nivel', W / 2, S.levelsLabelY);
+  const help = [
+    '← → / A D / mouse: mover la pala',
+    'Espacio / click / tap: lanzar la bola',
+    'P / Esc: pausa    M ↑ ↓: sonido',
+  ];
+  ctx.font = '14px monospace';
+  ctx.fillStyle = '#bbb';
+  help.forEach((line, i) => ctx.fillText(line, W / 2, S.helpY + i * 24));
+  const buttons = menuButtons('menu');
+  for (const b of buttons) drawButton(b, b.id === hoverId);
+  canvas.style.cursor = buttons.some((b) => b.id === hoverId) ? 'pointer' : '';
 }
 
 function drawButton(b, hovered) {
-  ctx.fillStyle = b.disabled ? 'rgba(255, 255, 255, 0.05)'
-    : b.active ? 'rgba(255, 215, 0, 0.35)'
+  ctx.fillStyle = b.active ? 'rgba(255, 215, 0, 0.35)'
     : hovered ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)';
   ctx.fillRect(b.x, b.y, b.w, b.h);
-  ctx.strokeStyle = b.active ? '#ffd700' : b.disabled ? '#555' : '#fff';
+  ctx.strokeStyle = b.active ? '#ffd700' : '#fff';
   ctx.lineWidth = 2;
   ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
-  ctx.fillStyle = b.disabled ? '#777' : '#fff';
+  ctx.fillStyle = '#fff';
   ctx.font = '18px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
