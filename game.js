@@ -22,10 +22,49 @@ const MAX_ROWS = 10;                                   // filas máximas (offset
 const PROC_START_LEVEL = 6;                            // primer nivel procedural
 const GRAY_HITS = { base: 2, level3Hits: 10 };         // 2 golpes; 3 desde el nivel 10
 const DAMAGED_ALPHA = 0.6;
+const MOTION_START_LEVEL = 3;                          // primer nivel con bloques móviles
+const SLIDE = { baseSpeed: 30, speedPerLevel: 6, maxSpeed: 90,   // px/s
+                baseRows: 2, maxRows: 8 };                       // filas móviles: 2 + floor((level-3)/2), tope maxRows
+const WAVE = { baseAmp: 6, ampPerLevel: 1, maxAmp: 12,           // px
+               basePeriod: 2500, periodPerLevel: 100, minPeriod: 1600,   // ms
+               phasePerCol: 0.6 };                               // rad de desfase entre columnas
 
 // Rapidez de la bola en un nivel dado
 function levelSpeed(level) {
   return BALL.speed * Math.min(1 + SPEED_PER_LEVEL * (level - 1), MAX_SPEED_FACTOR);
+}
+
+// Modo de movimiento de los bloques en un nivel: 'static' | 'slide' | 'wave'
+function levelMotion(level) {
+  if (level < MOTION_START_LEVEL) return 'static';
+  return level % 3 === 2 ? 'wave' : 'slide';
+}
+
+// Parámetros del modo slide (velocidad en px/s y cantidad de filas móviles)
+function slideParams(level) {
+  const n = level - MOTION_START_LEVEL;
+  return {
+    speed: Math.min(SLIDE.baseSpeed + SLIDE.speedPerLevel * n, SLIDE.maxSpeed),
+    movingRows: Math.min(SLIDE.baseRows + Math.floor(n / 2), SLIDE.maxRows),
+  };
+}
+
+// Parámetros del modo wave (amplitud en px y periodo en ms)
+function waveParams(level) {
+  const n = level - MOTION_START_LEVEL;
+  return {
+    amp: Math.min(WAVE.baseAmp + WAVE.ampPerLevel * n, WAVE.maxAmp),
+    period: Math.max(WAVE.basePeriod - WAVE.periodPerLevel * n, WAVE.minPeriod),
+  };
+}
+
+// Estado de movimiento inicial para un nivel
+function makeMotion(level) {
+  return {
+    mode: levelMotion(level),
+    t: 0,        // ms de movimiento acumulados (wave)
+    rows: [],    // { row, dir, speed, offset }; solo en slide
+  };
 }
 
 // Estado del juego
@@ -36,7 +75,8 @@ const state = {
   lives: INITIAL_LIVES,
   paddle: { x: (W - PADDLE.w) / 2 },
   ball: { x: 0, y: 0, vx: 0, vy: 0, stuck: true },
-  blocks: [],   // { x, y, color, alive, explosionT }
+  blocks: [],   // { x, y, col, row, baseX, baseY, color, alive, explosionT }
+  motion: makeMotion(1),
   floatTexts: [],   // { x, y, text, t }  (t = ms transcurridos)
   shakeT: null,     // null = sin sacudida, o ms transcurridos
 };
@@ -118,9 +158,15 @@ function levelParams(level) {
 }
 
 function makeBlock(r, c, color, hits) {
+  const baseX = BLOCK.offsetX + c * BLOCK.w;
+  const baseY = BLOCK.offsetY + r * BLOCK.h;
   return {
-    x: BLOCK.offsetX + c * BLOCK.w,
-    y: BLOCK.offsetY + r * BLOCK.h,
+    x: baseX,
+    y: baseY,
+    col: c,
+    row: r,
+    baseX,
+    baseY,
     color,
     alive: true,
     explosionT: null,
@@ -396,12 +442,18 @@ function loseLife() {
   else stickBall();
 }
 
+// Mueve los bloques según state.motion.mode (los modos se implementan en pasos posteriores)
+function updateMotion(dt) {
+}
+
 function update(dt) {
   const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   if (dir !== 0) {
     state.paddle.x += dir * PADDLE.speed * dt;
     clampPaddle();
   }
+  // El movimiento se actualiza antes de la colisión de la bola
+  if (state.status === 'playing') updateMotion(dt);
   updateBall(dt);
   updateExplosions(dt);
   updateEffects(dt);
