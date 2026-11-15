@@ -304,6 +304,27 @@ function inRect(p, r) {
   return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 }
 
+let highScore = 0;   // récord en memoria; se carga de localStorage al iniciar
+
+// Lee el récord: entero ≥ 0, o 0 si falta, es inválido o localStorage falla
+function loadHighScore() {
+  try {
+    const raw = localStorage.getItem(HIGHSCORE_KEY);
+    if (raw !== null && /^\d+$/.test(raw.trim())) return Number(raw.trim());
+  } catch (e) { /* localStorage bloqueado: el récord vive solo en memoria */ }
+  return 0;
+}
+
+// Si el puntaje actual supera el récord, lo actualiza y lo persiste
+function commitHighScore() {
+  if (state.score <= highScore) return;
+  highScore = state.score;
+  try {
+    localStorage.setItem(HIGHSCORE_KEY, String(highScore));
+  } catch (e) { /* sin persistencia: se conserva en memoria */ }
+}
+highScore = loadHighScore();
+
 let hoverId = null;   // id del botón bajo el mouse (solo pointerType 'mouse')
 
 // Cuadrícula de botones de nivel 1..MENU_LEVELS, centrada, que empieza en y
@@ -421,6 +442,7 @@ function stickBall() {
 
 // Reinicia la partida en `level`: puntaje 0, vidas iniciales, bola pegada (ready)
 function startGame(level = 1) {
+  commitHighScore();   // guarda el récord antes de reiniciar el puntaje
   state.level = level;
   state.score = 0;
   state.lives = INITIAL_LIVES;
@@ -440,6 +462,7 @@ function resetGame() {
 
 // Vuelve a la pantalla de inicio
 function goHome() {
+  commitHighScore();
   state.status = 'menu';
   state.pausedFrom = null;
   hoverId = null;
@@ -622,7 +645,10 @@ function updateBall(dt) {
 
 function loseLife() {
   state.lives -= 1;
-  if (state.lives <= 0) state.status = 'gameover';
+  if (state.lives <= 0) {
+    state.status = 'gameover';
+    commitHighScore();
+  }
   else stickBall();
 }
 
@@ -758,6 +784,8 @@ function drawStartScreen() {
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 56px monospace';
   ctx.fillText('ARKANOID', W / 2, S.titleY);
+  ctx.font = '20px monospace';
+  ctx.fillText('Récord: ' + highScore, W / 2, S.recordY);
   ctx.font = '16px monospace';
   ctx.fillText('Ir al nivel', W / 2, S.levelsLabelY);
   const help = [
