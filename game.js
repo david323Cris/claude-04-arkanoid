@@ -58,13 +58,22 @@ function waveParams(level) {
   };
 }
 
-// Estado de movimiento inicial para un nivel
-function makeMotion(level) {
-  return {
-    mode: levelMotion(level),
-    t: 0,        // ms de movimiento acumulados (wave)
-    rows: [],    // { row, dir, speed, offset }; solo en slide
-  };
+// Estado de movimiento inicial para un nivel (blocks: bloques del nivel, para elegir filas en slide)
+function makeMotion(level, blocks = []) {
+  const mode = levelMotion(level);
+  const rows = [];   // { row, dir, speed, offset }; solo en slide
+  if (mode === 'slide') {
+    const { speed, movingRows } = slideParams(level);
+    const existing = new Set(blocks.map((blk) => blk.row));
+    const maxRow = Math.max(-1, ...existing);
+    // Orden: de arriba hacia abajo, primero las pares y luego las impares
+    const order = [];
+    for (let r = 0; r <= maxRow; r += 2) order.push(r);
+    for (let r = 1; r <= maxRow; r += 2) order.push(r);
+    const chosen = order.filter((r) => existing.has(r)).slice(0, movingRows);
+    chosen.forEach((r, i) => rows.push({ row: r, dir: i % 2 === 0 ? 1 : -1, speed, offset: 0 }));
+  }
+  return { mode, t: 0, rows };
 }
 
 // Estado del juego
@@ -281,6 +290,7 @@ function resetGame() {
   state.score = 0;
   state.lives = INITIAL_LIVES;
   state.blocks = buildLevel(state.level);
+  state.motion = makeMotion(state.level, state.blocks);
   state.floatTexts = [];
   state.shakeT = null;
   state.paddle.x = (W - PADDLE.w) / 2;
@@ -291,6 +301,7 @@ function resetGame() {
 function nextLevel() {
   state.level += 1;
   state.blocks = buildLevel(state.level);
+  state.motion = makeMotion(state.level, state.blocks);
   stickBall();
 }
 
@@ -442,8 +453,38 @@ function loseLife() {
   else stickBall();
 }
 
-// Mueve los bloques según state.motion.mode (los modos se implementan en pasos posteriores)
+// Mueve los bloques según state.motion.mode (wave se implementa en el paso 3)
 function updateMotion(dt) {
+  if (state.motion.mode === 'slide') updateSlide(dt);
+}
+
+// Desliza las filas móviles como bloque rígido, rebotando en los bordes del canvas
+function updateSlide(dt) {
+  for (const mr of state.motion.rows) {
+    const rowBlocks = state.blocks.filter((blk) => blk.row === mr.row);
+    const alive = rowBlocks.filter((blk) => blk.alive);
+    if (alive.length === 0) continue;
+
+    // Límites de recorrido según los bloques vivos de la fila
+    let minBaseX = Infinity, maxBaseX = -Infinity;
+    for (const blk of alive) {
+      if (blk.baseX < minBaseX) minBaseX = blk.baseX;
+      if (blk.baseX > maxBaseX) maxBaseX = blk.baseX;
+    }
+    const minOffset = -minBaseX;
+    const maxOffset = W - (maxBaseX + BLOCK.w);
+
+    if (minOffset === maxOffset) {
+      mr.offset = 0;   // sin recorrido posible: la fila queda quieta
+    } else {
+      // Si cambió el conjunto de bloques vivos, el offset se recorta al nuevo rango
+      mr.offset = Math.max(minOffset, Math.min(maxOffset, mr.offset));
+      mr.offset += mr.dir * mr.speed * dt;
+      if (mr.offset >= maxOffset) { mr.offset = maxOffset; mr.dir = -1; }
+      else if (mr.offset <= minOffset) { mr.offset = minOffset; mr.dir = 1; }
+    }
+    for (const blk of rowBlocks) blk.x = blk.baseX + mr.offset;
+  }
 }
 
 function update(dt) {
