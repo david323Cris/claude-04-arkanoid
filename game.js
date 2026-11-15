@@ -29,6 +29,16 @@ const WAVE = { baseAmp: 6, ampPerLevel: 1, maxAmp: 12,           // px
                basePeriod: 2500, periodPerLevel: 100, minPeriod: 1600,   // ms
                phasePerCol: 0.6 };                               // rad de desfase entre columnas
 
+const HIGHSCORE_KEY = 'arkanoid.highscore';
+const MENU_LEVELS = 10;                                // niveles seleccionables 1..10
+const MENU_LAYOUT = {                                  // coordenadas lógicas (canvas 480×640), ajustables
+  button:   { w: 220, h: 44, x: 130 },
+  levelBtn: { w: 56, h: 40, gap: 12, cols: 5 },        // cuadrícula 5×2, centrada
+  pauseBtn: { x: 12, y: 40, w: 30, h: 26 },            // botón de pausa en el HUD
+  start:    { titleY: 120, recordY: 185, playY: 220, levelsLabelY: 300, levelsY: 320, helpY: 470 },
+  pause:    { titleY: 90, continueY: 130, restartY: 184, homeY: 238, soundY: 300, levelsLabelY: 372, levelsY: 392 },
+};
+
 // Rapidez de la bola en un nivel dado
 function levelSpeed(level) {
   return BALL.speed * Math.min(1 + SPEED_PER_LEVEL * (level - 1), MAX_SPEED_FACTOR);
@@ -78,10 +88,11 @@ function makeMotion(level, blocks = []) {
 
 // Estado del juego
 const state = {
-  status: 'ready',
+  status: 'menu',   // 'menu' | 'ready' | 'playing' | 'paused' | 'levelup' | 'gameover'
   level: 1,
   score: 0,
   lives: INITIAL_LIVES,
+  pausedFrom: null,   // 'ready' | 'playing' mientras status === 'paused'
   paddle: { x: (W - PADDLE.w) / 2 },
   ball: { x: 0, y: 0, vx: 0, vy: 0, stuck: true },
   blocks: [],   // { x, y, col, row, baseX, baseY, color, alive, explosionT }
@@ -266,16 +277,160 @@ function clampPaddle() {
   state.paddle.x = Math.max(0, Math.min(W - PADDLE.w, state.paddle.x));
 }
 
-// Convierte la x del puntero (px CSS) a coordenadas lógicas y centra la pala ahí
-function movePaddleToPointer(clientX) {
+// Convierte la posición del puntero (px CSS) a coordenadas lógicas del canvas
+function pointerToLogical(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = (clientX - rect.left) * (W / rect.width);
-  state.paddle.x = x - PADDLE.w / 2;
+  return {
+    x: (e.clientX - rect.left) * (W / rect.width),
+    y: (e.clientY - rect.top) * (H / rect.height),
+  };
+}
+
+// En menu y paused el juego está congelado y no recibe entrada de juego
+function isFrozen() {
+  return state.status === 'menu' || state.status === 'paused';
+}
+
+// Centra la pala en la x del puntero
+function movePaddleToPointer(e) {
+  if (isFrozen()) return;
+  state.paddle.x = pointerToLogical(e).x - PADDLE.w / 2;
   clampPaddle();
 }
 // Pointer events cubren mouse (sigue el cursor) y táctil (arrastrar)
-window.addEventListener('pointermove', (e) => movePaddleToPointer(e.clientX));
-canvas.addEventListener('pointerdown', (e) => movePaddleToPointer(e.clientX));
+window.addEventListener('pointermove', movePaddleToPointer);
+
+function inRect(p, r) {
+  return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+}
+
+let highScore = 0;   // récord en memoria; se carga de localStorage al iniciar
+
+// Lee el récord: entero ≥ 0, o 0 si falta, es inválido o localStorage falla
+function loadHighScore() {
+  try {
+    const raw = localStorage.getItem(HIGHSCORE_KEY);
+    if (raw !== null && /^\d+$/.test(raw.trim())) return Number(raw.trim());
+  } catch (e) { /* localStorage bloqueado: el récord vive solo en memoria */ }
+  return 0;
+}
+
+// Si el puntaje actual supera el récord, lo actualiza y lo persiste
+function commitHighScore() {
+  if (state.score <= highScore) return;
+  highScore = state.score;
+  try {
+    localStorage.setItem(HIGHSCORE_KEY, String(highScore));
+  } catch (e) { /* sin persistencia: se conserva en memoria */ }
+}
+highScore = loadHighScore();
+
+let hoverId = null;   // id del botón bajo el mouse (solo pointerType 'mouse')
+
+// Cuadrícula de botones de nivel 1..MENU_LEVELS, centrada, que empieza en y
+function levelButtons(y) {
+  const L = MENU_LAYOUT.levelBtn;
+  const x0 = (W - (L.cols * L.w + (L.cols - 1) * L.gap)) / 2;
+  const list = [];
+  for (let n = 1; n <= MENU_LEVELS; n++) {
+    const i = n - 1;
+    list.push({
+      id: 'level-' + n,
+      x: x0 + (i % L.cols) * (L.w + L.gap),
+      y: y + Math.floor(i / L.cols) * (L.h + L.gap),
+      w: L.w, h: L.h,
+      label: String(n),
+      active: state.status === 'paused' && state.level === n,   // resalta el nivel actual en la pausa
+    });
+  }
+  return list;
+}
+
+// Botones de una pantalla, calculados en cada llamada: [{ id, x, y, w, h, label, active }]
+function menuButtons(screen) {
+  const B = MENU_LAYOUT.button;
+  const btn = (id, y, label, extra) => ({ id, x: B.x, y, w: B.w, h: B.h, label, active: false, ...extra });
+  if (screen === 'menu') {
+    const S = MENU_LAYOUT.start;
+    return [btn('play', S.playY, 'Jugar'), ...levelButtons(S.levelsY)];
+  }
+  if (screen !== 'paused') return [];
+  const P = MENU_LAYOUT.pause;
+  const sw = [60, 90, 60], sg = (B.w - 210) / 2;   // fila de sonido: VOL − · MUTE · VOL +
+  const soundLabels = ['VOL −', muted ? 'MUTE' : 'VOL ' + Math.round(volume * 100) + '%', 'VOL +'];
+  const soundIds = ['vol-down', 'mute', 'vol-up'];
+  let sx = B.x;
+  const sound = soundIds.map((id, i) => {
+    const b = { id, x: sx, y: P.soundY, w: sw[i], h: B.h, label: soundLabels[i], active: false };
+    sx += sw[i] + sg;
+    return b;
+  });
+  return [
+    btn('continue', P.continueY, 'Continuar'),
+    btn('restart', P.restartY, 'Reiniciar partida'),
+    btn('home', P.homeY, 'Volver al inicio'),
+    ...sound,
+    ...levelButtons(P.levelsY),
+  ];
+}
+
+// Botón bajo (x, y) de la pantalla actual, o null
+function buttonAt(x, y) {
+  return menuButtons(state.status).find((b) => inRect({ x, y }, b)) || null;
+}
+
+// Ejecuta la acción del botón bajo (x, y), si hay
+function handleMenuClick(x, y) {
+  const b = buttonAt(x, y);
+  if (!b) return;
+  if (b.id === 'play') startGame(1);
+  else if (b.id === 'continue') resumeGame();
+  else if (b.id === 'restart') startGame(1);
+  else if (b.id === 'home') goHome();
+  else if (b.id === 'vol-down') changeVolume(-VOLUME_STEP);
+  else if (b.id === 'vol-up') changeVolume(VOLUME_STEP);
+  else if (b.id === 'mute') muted = !muted;
+  else if (b.id.startsWith('level-')) startGame(Number(b.id.slice(6)));
+}
+
+// Hover: solo mouse. Actualiza hoverId con el botón de menú o el botón de pausa bajo el puntero
+window.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse') return;
+  const p = pointerToLogical(e);
+  if (isFrozen()) {
+    const b = buttonAt(p.x, p.y);
+    hoverId = b ? b.id : null;
+  } else if ((state.status === 'ready' || state.status === 'playing') && inRect(p, MENU_LAYOUT.pauseBtn)) {
+    hoverId = 'pause';
+  } else {
+    hoverId = null;
+  }
+});
+
+// Único manejador de pointerdown sobre el canvas:
+// menu/paused → menú · botón de pausa → pausa sin lanzar · resto → como siempre
+canvas.addEventListener('pointerdown', (e) => {
+  if (isFrozen()) {
+    const p = pointerToLogical(e);
+    handleMenuClick(p.x, p.y);
+    return;
+  }
+  if ((state.status === 'ready' || state.status === 'playing') &&
+      inRect(pointerToLogical(e), MENU_LAYOUT.pauseBtn)) {
+    pauseGame();
+    return;
+  }
+  movePaddleToPointer(e);
+  onAction();
+});
+
+// Auto-pausa: solo durante 'playing'; volver a la pestaña no reanuda solo
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && state.status === 'playing') pauseGame();
+});
+window.addEventListener('blur', () => {
+  if (state.status === 'playing') pauseGame();
+});
 
 // --- Bola ---
 function stickBall() {
@@ -285,8 +440,10 @@ function stickBall() {
   state.status = 'ready';
 }
 
-function resetGame() {
-  state.level = 1;
+// Reinicia la partida en `level`: puntaje 0, vidas iniciales, bola pegada (ready)
+function startGame(level = 1) {
+  commitHighScore();   // guarda el récord antes de reiniciar el puntaje
+  state.level = level;
   state.score = 0;
   state.lives = INITIAL_LIVES;
   state.blocks = buildLevel(state.level);
@@ -294,7 +451,37 @@ function resetGame() {
   state.floatTexts = [];
   state.shakeT = null;
   state.paddle.x = (W - PADDLE.w) / 2;
+  state.pausedFrom = null;
+  hoverId = null;
   stickBall();
+}
+
+function resetGame() {
+  startGame(1);
+}
+
+// Vuelve a la pantalla de inicio
+function goHome() {
+  commitHighScore();
+  state.status = 'menu';
+  state.pausedFrom = null;
+  hoverId = null;
+}
+
+// 'ready' | 'playing' → 'paused'; recuerda desde dónde se pausó
+function pauseGame() {
+  if (state.status !== 'ready' && state.status !== 'playing') return;
+  state.pausedFrom = state.status;
+  state.status = 'paused';
+  hoverId = null;
+}
+
+// 'paused' → estado previo exacto
+function resumeGame() {
+  if (state.status !== 'paused') return;
+  state.status = state.pausedFrom;
+  state.pausedFrom = null;
+  hoverId = null;
 }
 
 // Pasa al nivel siguiente: puntaje y vidas se conservan; los efectos en curso siguen
@@ -307,6 +494,7 @@ function nextLevel() {
 
 // Espacio / click / tap: lanza la bola, avanza de nivel, o reinicia si la partida terminó
 function onAction() {
+  if (isFrozen()) return;
   if (state.status === 'gameover') resetGame();
   else if (state.status === 'levelup') nextLevel();
   else launchBall();
@@ -327,7 +515,16 @@ function launchBall() {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
-    if (!e.repeat) onAction();
+    if (e.repeat) return;
+    if (state.status === 'menu') startGame(1);
+    else onAction();
+  } else if (e.code === 'Enter') {
+    if (!e.repeat && state.status === 'menu') startGame(1);
+  } else if (e.code === 'KeyP' || e.code === 'Escape') {
+    // Alterna pausa; se ignora la repetición al mantener la tecla
+    if (e.repeat) return;
+    if (state.status === 'paused') resumeGame();
+    else pauseGame();
   } else if (e.code === 'KeyM') {
     // Alterna el silencio en cualquier estado; se ignora la repetición al mantener
     if (!e.repeat) muted = !muted;
@@ -339,7 +536,6 @@ window.addEventListener('keydown', (e) => {
     changeVolume(-VOLUME_STEP);
   }
 });
-canvas.addEventListener('pointerdown', onAction);
 
 // Rebote en la pala: el ángulo depende del punto de impacto (borde = maxAngle),
 // la rapidez se mantiene en BALL.speed
@@ -449,7 +645,10 @@ function updateBall(dt) {
 
 function loseLife() {
   state.lives -= 1;
-  if (state.lives <= 0) state.status = 'gameover';
+  if (state.lives <= 0) {
+    state.status = 'gameover';
+    commitHighScore();
+  }
   else stickBall();
 }
 
@@ -499,6 +698,7 @@ function updateSlide(dt) {
 }
 
 function update(dt) {
+  if (isFrozen()) return;   // menu y paused: nada se mueve
   const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   if (dir !== 0) {
     state.paddle.x += dir * PADDLE.speed * dt;
@@ -519,6 +719,11 @@ function update(dt) {
 function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
+
+  if (state.status === 'menu') {
+    drawStartScreen();
+    return;
+  }
 
   // Área de juego con offset de shake (decae linealmente a 0); HUD y pantalla final quedan fuera
   ctx.save();
@@ -551,6 +756,63 @@ function draw() {
   drawHud();
   if (state.status === 'levelup') drawEndScreen('Nivel ' + (state.level + 1), 'continuar');
   else if (state.status === 'gameover') drawEndScreen('Game Over', 'reiniciar');
+  else if (state.status === 'paused') drawPauseOverlay();
+  if (state.status !== 'paused') canvas.style.cursor = hoverId === 'pause' ? 'pointer' : '';
+}
+
+// Menú de pausa: juego detenido debajo, overlay oscuro y botones
+function drawPauseOverlay() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 48px monospace';
+  ctx.fillText('PAUSA', W / 2, MENU_LAYOUT.pause.titleY);
+  ctx.font = '16px monospace';
+  ctx.fillText('Ir al nivel', W / 2, MENU_LAYOUT.pause.levelsLabelY);
+  const buttons = menuButtons('paused');
+  for (const b of buttons) drawButton(b, b.id === hoverId);
+  canvas.style.cursor = buttons.some((b) => b.id === hoverId) ? 'pointer' : '';
+}
+
+// Pantalla de inicio: fondo negro, título, Jugar, selector de niveles y ayuda
+function drawStartScreen() {
+  const S = MENU_LAYOUT.start;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 56px monospace';
+  ctx.fillText('ARKANOID', W / 2, S.titleY);
+  ctx.font = '20px monospace';
+  ctx.fillText('Récord: ' + highScore, W / 2, S.recordY);
+  ctx.font = '16px monospace';
+  ctx.fillText('Ir al nivel', W / 2, S.levelsLabelY);
+  const help = [
+    '← → / A D / mouse: mover la pala',
+    'Espacio / click / tap: lanzar la bola',
+    'P / Esc: pausa    M ↑ ↓: sonido',
+  ];
+  ctx.font = '14px monospace';
+  ctx.fillStyle = '#bbb';
+  help.forEach((line, i) => ctx.fillText(line, W / 2, S.helpY + i * 24));
+  const buttons = menuButtons('menu');
+  for (const b of buttons) drawButton(b, b.id === hoverId);
+  canvas.style.cursor = buttons.some((b) => b.id === hoverId) ? 'pointer' : '';
+}
+
+function drawButton(b, hovered) {
+  ctx.fillStyle = b.active ? 'rgba(255, 215, 0, 0.35)'
+    : hovered ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)';
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.strokeStyle = b.active ? '#ffd700' : '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+  ctx.fillStyle = '#fff';
+  ctx.font = '18px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2);
 }
 
 // Textos flotantes: suben a riseSpeed px/s y su alfa baja de 1 a 0 con t / life
@@ -593,6 +855,14 @@ function drawHud() {
   for (let i = 0; i < state.lives; i++) {
     const x = W - 16 - icon - i * (icon + gap);
     drawSprite(ctx, 'ball', x, 30 - icon / 2, icon, icon);
+  }
+  // Botón de pausa: dos barras verticales, solo en ready y playing
+  if (state.status === 'ready' || state.status === 'playing') {
+    const pb = MENU_LAYOUT.pauseBtn;
+    const barW = 6, barH = 16;
+    const by = pb.y + (pb.h - barH) / 2;
+    ctx.fillRect(pb.x + pb.w / 2 - barW - 2, by, barW, barH);
+    ctx.fillRect(pb.x + pb.w / 2 + 2, by, barW, barH);
   }
   ctx.textAlign = 'right';
   ctx.fillText(muted ? 'MUTE' : 'VOL ' + Math.round(volume * 100) + '%', W - 16, 56);
